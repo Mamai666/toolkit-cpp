@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<html><head>
+	<title>Check Looping</title>
+	<meta charset="utf-8">
+	<style>
+	.codetext{
+		border: 1px inset;
+		font-family: monospace;
+		padding: 0 5px 15px 10px !important;
+		background: #E2F4FF;
+		font-size:14px;
+	}
+	</style>
+</head>
+<body style="font-size:20px;"><center>
+<table id="txt" border=0 cellspacing=0 cellpadding=0 width=1100><tr><td>
+
+<p style="font-weight:bold; font-size:30px;">Проверка модулей на зацикливание
+</p>
+
+<p>1. Размещение на gitlab: 
+<br>
+<a href="http://glosav.pro:8070/kachkovski/gtp-checklooping" style="color: blue; text-decoration: none; font-weight:bold;" target=_blank>Gitea: gtp-checklooping</a>
+<br>
+<a href="http://glosav.pro:8090/kachkovski/gtp-checklooping" style="color: blue; text-decoration: none; font-weight:bold;" target=_blank>GitLab: gtp-checklooping</a>
+</p>
+
+<p>2. Краткое описание:
+<br>
+В диспетчере реализован функционал, позволяющий контролировать каждый модуль на зацикливание и передавать от модуля в диспетчер статус состояния.<br>
+Для связи с диспетчером используется shared memory<br>
+Если в контролируемом цикле перестанет передаваться статус, то диспетчер обнаружит это и через некоторое время перезапустит модуль.<br>
+</p>
+
+
+<p>3. Интеграция в проект:
+<br>
+Для использования контроля зацикливания в модуле нужно добавить в проект три файла:
+<br>
+- <b>u-checkloop-data.hpp</b>
+<br>
+- <b>u-checkloop-client.hpp</b>
+<br>
+- <b>u-checkloop-client.cpp</b>
+<br>
+Понадобится также подключить стандартную библиотеку <b>librt</b> ( <b>-lrt</b> ) для работы с shared memory
+</p>
+
+
+<p style="margin-top: 40px;">4. Пример использования функций для контроля зависаний модуля:
+<xmp class="codetext">
+#include <u-checkloop-client.hpp>
+#include <unistd.h>
+#include <stdio.h>
+
+
+bool enaWork = true;
+
+
+int main()
+{
+    gtpCheckLoopClient dispatcherStatus;
+
+    if (!dispatcherStatus.Open()) {
+        fprintf(stderr, "Не удалось подключиться к диспетчеру");
+    }
+
+    while (enaWork) {
+        dispatcherStatus.Notify();
+        sleep(1);
+    }
+    dispatcherStatus.Close();
+}
+</xmp>
+</p>
+
+
+<p style="margin-top: 40px;">5. Прототипы функций в файле <a href="u-checkloop-client.hpp" style="text-decoration:none; font-weight:bold; color:blue;" target=_blank>u-checkloop-client.hpp</a>:
+<xmp class="codetext">
+class gtpCheckLoopClient {
+    public:
+        // подключиться к диспетчеру
+        bool    Open(void);
+
+        // отключиться от диспетчера
+        void    Close(void);
+
+        // возможные статусы модуля для передачи в диспетчер
+        enum class Statuses {
+            Status_Off = 0,
+            Status_OK = 1
+        };
+
+        // передать статус в диспетчер. По-умолчанию передается Status_OK
+        void    Notify(Statuses StatusCode = Statuses::Status_OK);
+};
+</xmp>  
+</p>
+
+<p><b>bool    gtpCheckLoopClient::Open( void );</b><br>
+Функция подключается к shared memory диспетчера для последующей передачи статуса модуля.<br>
+Возвращает true при успешном завершении и false, если не удалось подключиться к диспетчеру<br>
+Вызов других функций при неуспешном подключении окажется бесполезным, тем не менее их вызов не приведет к ошибкам или исключениям.
+</p>
+
+<p><b>void    gtpCheckLoopClient::Close( void );</b><br>
+Функция отключается от shared memory диспетчера.<br>
+С этого момента вызов других функций окажется бесполезным, тем не менее их вызов не приведет к ошибкам или исключениям.
+</p>
+
+<p><b>void    gtpCheckLoopClient::Notify( gtpCheckLoopClient::Statuses StatusCode );</b><br>
+Функция передает в диспетчер статус модуля для контроля его на зависание.
+</p>
+
+<br>
+<br>
+
+<b>Приложение A</b>: исходный код контроля зацикливания модулей
+<hr>
+
+1) Содержимое файла <a href="u-checkloop-client.hpp" style="text-decoration:none; font-weight:bold; color:blue;" target=_blank>u-checkloop-client.hpp</a>
+<br>
+
+2) Содержимое файла <a href="u-checkloop-client.cpp" style="text-decoration:none; font-weight:bold; color:blue;" target=_blank>u-checkloop-client.cpp</a>
+<br>
+
+3) Содержимое файла <a href="u-checkloop-data.hpp" style="text-decoration:none; font-weight:bold; color:blue;" target=_blank>u-checkloop-data.hpp</a>
+(содержит описание структуры shared memory, используется в u-checkloop-client.cpp)
+
+<br>
+<br>
+<br>
+
+<b>Приложение B</b>: подключение класса контроля зацикливания в QT
+<hr>
+
+1) Содержимое файла <a href="u-checkloop-data.pri" style="text-decoration:none; font-weight:bold; color:blue;" target=_blank>u-checkloop-data.pri</a>
+<br>
+
+2) Подключение в проекте, пример
+<br>
+<img src="qt-example.jpg" style="margin-top: 10px;">
+<br>
+<br>
+
+</td></tr></table>
+</center></body><html>
